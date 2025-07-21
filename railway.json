@@ -11,14 +11,13 @@
   "project": {
     "name": "2ad-link-shortener"
   },
-  "environments": [
-    {
-      "name": "production",
+  "environments": {
+    "production": {
       "variables": {
         "PORT": "8080",
         "DISPLAY": ":99",
         "PYTHONUNBUFFERED": "1"
       }
     }
-  ]
+  }
 }
