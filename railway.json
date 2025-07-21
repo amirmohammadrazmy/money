@@ -1,13 +1,24 @@
 {
-  "$schema": "https://railway.app/railway.schema.json",
-  "build": {
-    "builder": "DOCKERFILE",
-    "dockerfilePath": "Dockerfile"
+  "plugins": [
+    {
+      "name": "docker",
+      "service": "web",
+      "dockerfilePath": "Dockerfile",
+      "startCommand": "python main.py",
+      "port": 8080
+    }
+  ],
+  "project": {
+    "name": "2ad-link-shortener"
   },
-  "deploy": {
-    "numReplicas": 1,
-    "sleepApplication": false,
-    "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
-  }
+  "environments": [
+    {
+      "name": "production",
+      "variables": {
+        "PORT": "8080",
+        "DISPLAY": ":99",
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  ]
 }
