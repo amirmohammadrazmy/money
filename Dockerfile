@@ -17,10 +17,11 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key
     && rm -rf /var/lib/apt/lists/*
 
 # نصب ChromeDriver
-RUN CHROME_DRIVER_VERSION=`curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE` \
-    && wget -O /tmp/chromedriver.zip http://chromedriver.storage.googleapis.com/\$CHROME_DRIVER_VERSION/chromedriver_linux64.zip \
-    && unzip /tmp/chromedriver.zip chromedriver -d /usr/local/bin/ \
-    && rm /tmp/chromedriver.zip \
+RUN CHROME_DRIVER_VERSION=$(curl -sS https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_STABLE) \
+    && wget -O /tmp/chromedriver.zip "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/${CHROME_DRIVER_VERSION}/linux64/chromedriver-linux64.zip" \
+    && unzip /tmp/chromedriver.zip -d /tmp \
+    && mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/ \
+    && rm -rf /tmp/chromedriver* \
     && chmod +x /usr/local/bin/chromedriver
 
 # تنظیم دایرکتوری کاری
