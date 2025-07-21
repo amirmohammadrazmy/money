@@ -16,13 +16,9 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key
     && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
-# نصب ChromeDriver
-RUN CHROME_DRIVER_VERSION=$(curl -sS https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_STABLE) \
-    && wget -O /tmp/chromedriver.zip "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/${CHROME_DRIVER_VERSION}/linux64/chromedriver-linux64.zip" \
-    && unzip /tmp/chromedriver.zip -d /tmp \
-    && mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/ \
-    && rm -rf /tmp/chromedriver* \
-    && chmod +x /usr/local/bin/chromedriver
+# به جای دانلود کروم‌درایور، کپی‌اش کن و دسترسی اجرایی بده
+COPY chromedriver /usr/local/bin/
+RUN chmod +x /usr/local/bin/chromedriver
 
 # تنظیم دایرکتوری کاری
 WORKDIR /app
