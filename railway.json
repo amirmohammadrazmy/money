@@ -4,7 +4,7 @@
       "name": "docker",
       "service": "web",
       "dockerfilePath": "Dockerfile",
-      "startCommand": "python main.py",
+      "startCommand": "python check_connection.py",
       "port": 8080
     }
   ],
