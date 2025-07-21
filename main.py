@@ -25,8 +25,8 @@ PASSWORD = "amir1384328"
 
 # فایل‌های لینک در GitHub
 GITHUB_FILES = [
-    "https://raw.githubusercontent.com/amirmohammadrazmy/money/download_links_480p.txt",
-    "https://raw.githubusercontent.com/amirmohammadrazmy/money/output_links.txt"
+    "https://raw.githubusercontent.com/amirmohammadrazmy/money/main/download_links_480p.txt",
+    "https://raw.githubusercontent.com/amirmohammadrazmy/money/main/output_links.txt"
 ]
 
 app = Flask(__name__)
