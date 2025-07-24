@@ -1,6 +1,0 @@
-services:
-  - type: web
-    name: playwright-project
-    env: docker
-    plan: free
-    autoDeploy: false
