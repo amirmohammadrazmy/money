@@ -1,12 +1,6 @@
 services:
   - type: web
-    name: playwright-bot
-    env: python
-    buildCommand: "./build.sh"
-    startCommand: "xvfb-run --auto-servernum --server-args='-screen 0 1024x768x24' python main.py"
-    envVars:
-      - key: PYTHONUNBUFFERED
-        value: "1"
-      - key: DISPLAY
-        value: ":99"
+    name: playwright-project
+    env: docker
     plan: free
+    autoDeploy: false
