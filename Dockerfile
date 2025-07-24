@@ -15,11 +15,11 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# نصب playwright + مرورگرها
-RUN pip install playwright && playwright install chromium
+# نصب playwright و تمام وابستگی‌ها با مرورگرها
+RUN pip install playwright && playwright install --with-deps
 
-# کپی بقیه فایل‌ها
+# کپی فایل‌ها
 COPY . .
 
-# فایل اجرای اصلی
+# اجرای برنامه
 ENTRYPOINT ["python", "entrypoint.py"]
