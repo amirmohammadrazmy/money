@@ -1,20 +1,25 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 
-# نصب ابزارها
-RUN apt-get update && apt-get install -y \
-    curl wget fonts-liberation libglib2.0-0 libnss3 libx11-xcb1 \
-    libxcomposite1 libxdamage1 libxrandr2 libgbm1 libasound2 libpangocairo-1.0-0 \
-    libgtk-3-0 xvfb \
-    && apt-get clean
-
-# کپی فایل‌ها
 WORKDIR /app
-COPY . /app
 
-# نصب پکیج‌ها
-RUN pip install --upgrade pip \
-    && pip install -r requirements.txt \
-    && python -m playwright install
+# نصب ابزارهای لازم
+RUN apt-get update && apt-get install -y \
+    wget curl ca-certificates gnupg \
+    libglib2.0-0 libnss3 libx11-xcb1 \
+    libxcomposite1 libxdamage1 libxrandr2 libgbm1 \
+    libasound2 libpangocairo-1.0-0 libgtk-3-0 \
+    xvfb xauth \
+ && rm -rf /var/lib/apt/lists/*
 
-# اجرای اسکریپت ورود
-CMD ["python", "entrypoint.py"]
+# نصب وابستگی‌های Python
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# نصب playwright + مرورگرها
+RUN pip install playwright && playwright install chromium
+
+# کپی بقیه فایل‌ها
+COPY . .
+
+# فایل اجرای اصلی
+ENTRYPOINT ["python", "entrypoint.py"]
