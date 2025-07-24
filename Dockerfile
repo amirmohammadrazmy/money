@@ -1,21 +1,20 @@
 FROM python:3.10-slim
 
-# نصب ابزارهای لازم
+# نصب ابزارها
 RUN apt-get update && apt-get install -y \
-    wget curl xvfb fonts-liberation libglib2.0-0 libnss3 libx11-xcb1 \
+    curl wget fonts-liberation libglib2.0-0 libnss3 libx11-xcb1 \
     libxcomposite1 libxdamage1 libxrandr2 libgbm1 libasound2 libpangocairo-1.0-0 \
-    libgtk-3-0 --no-install-recommends && \
-    rm -rf /var/lib/apt/lists/*
+    libgtk-3-0 xvfb \
+    && apt-get clean
 
-# نصب پکیج‌های پروژه
-COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
+# کپی فایل‌ها
+WORKDIR /app
+COPY . /app
 
-# نصب Playwright و مرورگرها
-RUN python -m playwright install
+# نصب پکیج‌ها
+RUN pip install --upgrade pip \
+    && pip install -r requirements.txt \
+    && python -m playwright install
 
-# کپی باقی فایل‌های پروژه
-COPY . .
-
-# اجرای فایل اصلی که اتصال رو تست می‌کنه و بعد main.py رو اجرا می‌کنه
-CMD ["xvfb-run", "python", "entrypoint.py"]
+# اجرای اسکریپت ورود
+CMD ["python", "entrypoint.py"]
