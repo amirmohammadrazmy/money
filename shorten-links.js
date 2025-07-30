@@ -27,11 +27,6 @@ function checkSiteAvailable(url) {
     });
   });
 }
-async function checkSiteAvailable(url) {
-  // اینجا چک کن که سایت در دسترس هست یا نه
-  // مثلا درخواست fetch یا request ساده
-  return true; // فرض کن سایت همیشه در دسترسه (نمونه)
-}
 
 (async () => {
   try {
@@ -44,65 +39,85 @@ async function checkSiteAvailable(url) {
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
-  // لاگین
-  await page.goto(LOGIN_URL, { waitUntil: "networkidle2" });
-  await page.type('input[name="username"]', USERNAME);
-  await page.type('input[name="password"]', PASSWORD);
-  await Promise.all([
-    page.click('button#g-recaptcha, button#invisibleCaptchaSignin, button.submit-button'),
-    page.waitForNavigation({ waitUntil: "networkidle2" })
-  ]);
+    const page = await browser.newPage();
 
-  // رفتن به صفحه لینک‌ها
-  await page.goto(LINKS_PAGE, { waitUntil: "networkidle2" });
+    // لاگین
+    await page.goto(LOGIN_URL, { waitUntil: "networkidle2" });
+    await page.type('input[name="username"]', USERNAME);
+    await page.type('input[name="password"]', PASSWORD);
 
-  // خوندن لینک‌ها
-  const allLinks = new Set();
-  for (const file of INPUT_FILES) {
+    await Promise.all([
+      page.click('button#g-recaptcha, button#invisibleCaptchaSignin, button.submit-button'),
+      page.waitForNavigation({ waitUntil: "networkidle2" })
+    ]);
+
+    // رفتن به صفحه لینک‌ها
+    await page.goto(LINKS_PAGE, { waitUntil: "networkidle2" });
+
+    // خوندن لینک‌ها
+    const allLinks = new Set();
+    for (const file of INPUT_FILES) {
+      try {
+        const content = await fs.readFile(path.resolve(file), "utf-8");
+        content.split("\n").map(line => line.trim()).filter(Boolean).forEach(url => allLinks.add(url));
+      } catch (err) {
+        console.log(`File not found: ${file}, skipping.`);
+      }
+    }
+
+    console.log(`Total unique links to shorten: ${allLinks.size}`);
+
+    // لینک‌هایی که قبلاً ذخیره شدند
+    const shortenedLinks = new Set();
     try {
-      const content = await fs.readFile(path.resolve(file), "utf-8");
-      content.split("\n").map(line => line.trim()).filter(Boolean).forEach(url => allLinks.add(url));
+      const existing = await fs.readFile(path.resolve(OUTPUT_FILE), "utf-8");
+      existing.split("\n").map(line => line.trim()).filter(Boolean).forEach(url => shortenedLinks.add(url));
     } catch (err) {
-      console.log(`File not found: ${file}, skipping.`);
-    }
-  }
-
-  console.log(`Total unique links to shorten: ${allLinks.size}`);
-
-  // لینک‌هایی که قبلاً ذخیره شدند
-  const shortenedLinks = new Set();
-  try {
-    const existing = await fs.readFile(path.resolve(OUTPUT_FILE), "utf-8");
-    existing.split("\n").map(line => line.trim()).filter(Boolean).forEach(url => shortenedLinks.add(url));
-  } catch (err) {}
-
-  const fOut = await fs.open(path.resolve(OUTPUT_FILE), "a");
-
-  for (const url of allLinks) {
-    if (shortenedLinks.has(url)) {
-      console.log(`Already shortened: ${url}`);
-      continue;
+      // اگر فایل نیست، ادامه می‌دهیم
     }
 
-    await page.click("#modal-open-new-link");
-    await page.waitForSelector("input#url", { visible: true });
-    await page.type("input#url", url);
-    await page.click('span:contains("کوتاه کن")');
-    await page.waitForSelector("input#link-result-url");
+    for (const url of allLinks) {
+      if (shortenedLinks.has(url)) {
+        console.log(`Already shortened: ${url}`);
+        continue;
+      }
 
-    const shortLink = await page.$eval("input#link-result-url", el => el.value);
+      // باز کردن مودال جدید
+      await page.click("#modal-open-new-link");
+      await page.waitForSelector("input#url", { visible: true });
+      await page.evaluate(() => (document.querySelector("input#url").value = "")); // پاک کردن ورودی قبل
+      await page.type("input#url", url);
 
-    const newTab = await browser.newPage();
-    await newTab.goto(shortLink, { waitUntil: "domcontentloaded" });
-    await newTab.waitForTimeout(3000);
-    await newTab.close();
+      // چون :contains در CSS نیست، باید از XPath استفاده کنیم:
+      const [shortenButton] = await page.$x("//span[contains(text(), 'کوتاه کن')]");
+      if (!shortenButton) {
+        console.error("کوتاه کن دکمه پیدا نشد.");
+        continue;
+      }
+      await Promise.all([
+        shortenButton.click(),
+        page.waitForSelector("input#link-result-url", { visible: true }),
+      ]);
 
-    await fOut.appendFile(shortLink + "\n");
-    shortenedLinks.add(url);
+      const shortLink = await page.$eval("input#link-result-url", el => el.value);
 
-    console.log(`Shortened: ${url} -> ${shortLink}`);
+      // بازکردن لینک کوتاه شده در تب جدید برای تایید
+      const newTab = await browser.newPage();
+      await newTab.goto(shortLink, { waitUntil: "domcontentloaded" });
+      await newTab.waitForTimeout(3000);
+      await newTab.close();
+
+      // ذخیره لینک کوتاه شده در فایل
+      await fs.appendFile(path.resolve(OUTPUT_FILE), shortLink + "\n");
+      shortenedLinks.add(url);
+
+      console.log(`Shortened: ${url} -> ${shortLink}`);
+    }
+
+    await browser.close();
+
+  } catch (err) {
+    console.error("خطا:", err);
+    process.exit(1);
   }
-
-  await fOut.close();
-  await browser.close();
 })();
