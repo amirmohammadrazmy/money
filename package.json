@@ -8,5 +8,8 @@
   },
   "dependencies": {
     "puppeteer": "^22.0.0"
+  },
+  "puppeteer": {
+    "default_browser_revision": "1276746"
   }
 }
