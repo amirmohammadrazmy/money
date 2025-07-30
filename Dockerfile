@@ -2,6 +2,7 @@ FROM node:18-slim
 
 # نصب کتابخانه‌های لازم برای Chromium
 RUN apt-get update && apt-get install -y \
+  libdrm2 \
   gconf-service \
   libasound2 \
   libatk1.0-0 \
