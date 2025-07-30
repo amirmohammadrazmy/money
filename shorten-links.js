@@ -12,19 +12,20 @@ const PASSWORD = "amir1384328";
 const LOGIN_URL = "https://2ad.ir/auth/signin";
 const LINKS_PAGE = "https://2ad.ir/member/links";
 
-// چک کردن در دسترس بودن سایت
 function checkSiteAvailable(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, res => {
-      const { statusCode } = res;
-      if (statusCode >= 200 && statusCode < 400) {
-        resolve(true);
-      } else {
-        reject(new Error(`Server responded with status code: ${statusCode}`));
-      }
-    }).on("error", err => {
-      reject(new Error(`Site unreachable: ${err.message}`));
-    });
+    https
+      .get(url, (res) => {
+        const { statusCode } = res;
+        if (statusCode >= 200 && statusCode < 400) {
+          resolve(true);
+        } else {
+          reject(new Error(`Server responded with status code: ${statusCode}`));
+        }
+      })
+      .on("error", (err) => {
+        reject(new Error(`Site unreachable: ${err.message}`));
+      });
   });
 }
 
@@ -36,10 +37,14 @@ function checkSiteAvailable(url) {
 
     const browser = await puppeteer.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
     const page = await browser.newPage();
+
+    if (!page || typeof page.$x !== "function") {
+      throw new Error("❌ صفحه Puppeteer معتبر نیست یا متد $x موجود نیست.");
+    }
 
     // لاگین
     await page.goto(LOGIN_URL, { waitUntil: "networkidle2" });
@@ -48,10 +53,9 @@ function checkSiteAvailable(url) {
 
     await Promise.all([
       page.click('button#g-recaptcha, button#invisibleCaptchaSignin, button.submit-button'),
-      page.waitForNavigation({ waitUntil: "networkidle2" })
+      page.waitForNavigation({ waitUntil: "networkidle2" }),
     ]);
 
-    // رفتن به صفحه لینک‌ها
     await page.goto(LINKS_PAGE, { waitUntil: "networkidle2" });
 
     // خوندن لینک‌ها
@@ -59,65 +63,77 @@ function checkSiteAvailable(url) {
     for (const file of INPUT_FILES) {
       try {
         const content = await fs.readFile(path.resolve(file), "utf-8");
-        content.split("\n").map(line => line.trim()).filter(Boolean).forEach(url => allLinks.add(url));
+        content
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .forEach((url) => allLinks.add(url));
       } catch (err) {
-        console.log(`File not found: ${file}, skipping.`);
+        console.log(`⚠️ فایل پیدا نشد: ${file} → رد شد.`);
       }
     }
 
-    console.log(`Total unique links to shorten: ${allLinks.size}`);
+    console.log(`🔗 تعداد لینک یکتا: ${allLinks.size}`);
 
-    // لینک‌هایی که قبلاً ذخیره شدند
     const shortenedLinks = new Set();
     try {
       const existing = await fs.readFile(path.resolve(OUTPUT_FILE), "utf-8");
-      existing.split("\n").map(line => line.trim()).filter(Boolean).forEach(url => shortenedLinks.add(url));
+      existing
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .forEach((url) => shortenedLinks.add(url));
     } catch (err) {
-      // اگر فایل نیست، ادامه می‌دهیم
+      // فایل هنوز ساخته نشده، مشکلی نیست
     }
 
     for (const url of allLinks) {
       if (shortenedLinks.has(url)) {
-        console.log(`Already shortened: ${url}`);
+        console.log(`✅ قبلاً کوتاه شده: ${url}`);
         continue;
       }
 
-      // باز کردن مودال جدید
-      await page.click("#modal-open-new-link");
-      await page.waitForSelector("input#url", { visible: true });
-      await page.evaluate(() => (document.querySelector("input#url").value = "")); // پاک کردن ورودی قبل
-      await page.type("input#url", url);
+      try {
+        await page.click("#modal-open-new-link");
+        await page.waitForSelector("input#url", { visible: true });
+        await page.evaluate(() => {
+          const input = document.querySelector("input#url");
+          if (input) input.value = "";
+        });
+        await page.type("input#url", url);
 
-      // چون :contains در CSS نیست، باید از XPath استفاده کنیم:
-      const [shortenButton] = await page.$x("//span[contains(text(), 'کوتاه کن')]");
-      if (!shortenButton) {
-        console.error("کوتاه کن دکمه پیدا نشد.");
-        continue;
+        const [shortenButton] = await page.$x("//span[contains(text(), 'کوتاه کن')]");
+        if (!shortenButton) {
+          console.error("❌ دکمه «کوتاه کن» پیدا نشد.");
+          continue;
+        }
+
+        await Promise.all([
+          shortenButton.click(),
+          page.waitForSelector("input#link-result-url", { visible: true }),
+        ]);
+
+        const shortLink = await page.$eval("input#link-result-url", (el) => el.value);
+
+        const newTab = await browser.newPage();
+        await newTab.goto(shortLink, { waitUntil: "domcontentloaded" });
+        await newTab.waitForTimeout(3000);
+        await newTab.close();
+
+        await fs.appendFile(path.resolve(OUTPUT_FILE), shortLink + "\n");
+        shortenedLinks.add(url);
+
+        console.log(`✅ کوتاه شد: ${url} → ${shortLink}`);
+      } catch (err) {
+        console.error(`❌ خطا در کوتاه‌سازی ${url}:`, err.message);
       }
-      await Promise.all([
-        shortenButton.click(),
-        page.waitForSelector("input#link-result-url", { visible: true }),
-      ]);
-
-      const shortLink = await page.$eval("input#link-result-url", el => el.value);
-
-      // بازکردن لینک کوتاه شده در تب جدید برای تایید
-      const newTab = await browser.newPage();
-      await newTab.goto(shortLink, { waitUntil: "domcontentloaded" });
-      await newTab.waitForTimeout(3000);
-      await newTab.close();
-
-      // ذخیره لینک کوتاه شده در فایل
-      await fs.appendFile(path.resolve(OUTPUT_FILE), shortLink + "\n");
-      shortenedLinks.add(url);
-
-      console.log(`Shortened: ${url} -> ${shortLink}`);
     }
 
     await browser.close();
+    console.log("🎉 تمام شد.");
 
   } catch (err) {
-    console.error("خطا:", err);
+    console.error("❌ خطا:", err);
     process.exit(1);
   }
 })();
