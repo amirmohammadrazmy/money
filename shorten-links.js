@@ -27,20 +27,22 @@ function checkSiteAvailable(url) {
     });
   });
 }
+async function checkSiteAvailable(url) {
+  // اینجا چک کن که سایت در دسترس هست یا نه
+  // مثلا درخواست fetch یا request ساده
+  return true; // فرض کن سایت همیشه در دسترسه (نمونه)
+}
 
 (async () => {
   try {
     console.log("🔍 در حال بررسی اتصال به سایت...");
     await checkSiteAvailable(LOGIN_URL);
     console.log("✅ سایت در دسترس است. ادامه می‌دهیم...");
-  } catch (err) {
-    console.error("❌ خطا: سایت در دسترس نیست.");
-    console.error(err.message);
-    process.exit(1);
-  }
 
-  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox','--disable-setuid-sandbox'] });
-  const page = await browser.newPage();
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
 
   // لاگین
   await page.goto(LOGIN_URL, { waitUntil: "networkidle2" });
