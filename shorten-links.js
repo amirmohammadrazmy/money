@@ -42,10 +42,6 @@ function checkSiteAvailable(url) {
 
     const page = await browser.newPage();
 
-    if (!page || typeof page.$x !== "function") {
-      throw new Error("❌ صفحه Puppeteer معتبر نیست یا متد $x موجود نیست.");
-    }
-
     // لاگین
     await page.goto(LOGIN_URL, { waitUntil: "networkidle2" });
     await page.type('input[name="username"]', USERNAME);
@@ -58,7 +54,6 @@ function checkSiteAvailable(url) {
 
     await page.goto(LINKS_PAGE, { waitUntil: "networkidle2" });
 
-    // خوندن لینک‌ها
     const allLinks = new Set();
     for (const file of INPUT_FILES) {
       try {
@@ -84,7 +79,7 @@ function checkSiteAvailable(url) {
         .filter(Boolean)
         .forEach((url) => shortenedLinks.add(url));
     } catch (err) {
-      // فایل هنوز ساخته نشده، مشکلی نیست
+      // فایل نیست، مشکلی نیست
     }
 
     for (const url of allLinks) {
@@ -131,7 +126,6 @@ function checkSiteAvailable(url) {
 
     await browser.close();
     console.log("🎉 تمام شد.");
-
   } catch (err) {
     console.error("❌ خطا:", err);
     process.exit(1);
