@@ -2,6 +2,7 @@ const puppeteer = require("puppeteer");
 const fs = require("fs").promises;
 const path = require("path");
 const https = require("https");
+const http = require('http');
 
 const INPUT_FILES = ["download_links_480p.txt", "output_links.txt"];
 const OUTPUT_FILE = "final_shortened_links.txt";
@@ -29,7 +30,7 @@ function checkSiteAvailable(url) {
   });
 }
 
-(async () => {
+async function runBot(server) {
   try {
     console.log("🔍 در حال بررسی اتصال به سایت...");
     await checkSiteAvailable(LOGIN_URL);
@@ -128,7 +129,7 @@ function checkSiteAvailable(url) {
           waitUntil: "domcontentloaded",
           timeout: 60000,
         });
-        await newTab.waitForTimeout(3000);
+        await new Promise(r => setTimeout(r, 3000));
         await newTab.close();
 
         await fs.appendFile(path.resolve(OUTPUT_FILE), shortLink + "\n");
@@ -141,9 +142,35 @@ function checkSiteAvailable(url) {
     }
 
     await browser.close();
-    console.log("🎉 تمام شد.");
+    console.log("🎉 تمام شد. در حال بستن سرور...");
+    server.close(() => {
+        console.log('سرور بسته شد.');
+        process.exit(0);
+    });
   } catch (err) {
     console.error("❌ خطا:", err);
-    process.exit(1);
+    server.close(() => {
+        console.log('سرور به دلیل خطا بسته شد.');
+        process.exit(1);
+    });
   }
-})();
+}
+
+// Server logic
+const PORT = process.env.PORT || 10000;
+
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('OK\n');
+});
+
+server.listen(PORT, () => {
+  console.log(`🚀 سرور در پورت ${PORT} اجرا شد.`);
+  console.log('🤖 شروع به کار ربات...');
+  runBot(server);
+});
+
+server.on('error', (err) => {
+  console.error('❌ خطای سرور:', err);
+  process.exit(1);
+});
