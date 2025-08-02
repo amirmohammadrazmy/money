@@ -97,9 +97,18 @@ function checkSiteAvailable(url) {
         });
         await page.type("input#url", url);
 
-        const [shortenButton] = await page.$x("//span[contains(text(), 'کوتاه کن')]");
+        console.log('Current page URL:', page.url()); // For debugging
+
+        const shortenButtonHandle = await page.evaluateHandle(() => {
+          const spans = Array.from(document.querySelectorAll('span'));
+          const button = spans.find(span => span.textContent.includes('کوتاه کن'));
+          return button;
+        });
+
+        const shortenButton = shortenButtonHandle.asElement();
+
         if (!shortenButton) {
-          console.error("❌ دکمه «کوتاه کن» پیدا نشد.");
+          console.error("❌ دکمه «کوتاه کن» با روش جدید پیدا نشد.");
           continue;
         }
 
