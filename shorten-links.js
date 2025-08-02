@@ -37,7 +37,11 @@ function checkSiteAvailable(url) {
 
     const browser = await puppeteer.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--dns-server=8.8.8.8",
+      ],
     });
 
     const page = await browser.newPage();
@@ -120,7 +124,10 @@ function checkSiteAvailable(url) {
         const shortLink = await page.$eval("input#link-result-url", (el) => el.value);
 
         const newTab = await browser.newPage();
-        await newTab.goto(shortLink, { waitUntil: "domcontentloaded" });
+        await newTab.goto(shortLink, {
+          waitUntil: "domcontentloaded",
+          timeout: 60000,
+        });
         await newTab.waitForTimeout(3000);
         await newTab.close();
 
