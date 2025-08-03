@@ -2,7 +2,6 @@ const puppeteer = require("puppeteer");
 const fs = require("fs").promises;
 const path = require("path");
 const https = require("https");
-const http = require('http');
 
 const INPUT_FILES = ["download_links_480p.txt", "output_links.txt"];
 const OUTPUT_FILE = "final_shortened_links.txt";
@@ -30,18 +29,19 @@ function checkSiteAvailable(url) {
   });
 }
 
-async function runBot(server) {
+(async () => {
+  let browser;
   try {
     console.log("🔍 در حال بررسی اتصال به سایت...");
     await checkSiteAvailable(LOGIN_URL);
     console.log("✅ سایت در دسترس است. ادامه می‌دهیم...");
 
-    const browser = await puppeteer.launch({
+    browser = await puppeteer.launch({
       headless: true,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
-        "--dns-server=8.8.8.8",
+        "--dns-server=8.8.8.8", // Keeping this as it can still be helpful
       ],
     });
 
@@ -102,8 +102,6 @@ async function runBot(server) {
         });
         await page.type("input#url", url);
 
-        console.log('Current page URL:', page.url()); // For debugging
-
         const shortenButtonHandle = await page.evaluateHandle(() => {
           const spans = Array.from(document.querySelectorAll('span'));
           const button = spans.find(span => span.textContent.includes('کوتاه کن'));
@@ -124,13 +122,25 @@ async function runBot(server) {
 
         const shortLink = await page.$eval("input#link-result-url", (el) => el.value);
 
+        // --- OPTIMIZATION START ---
         const newTab = await browser.newPage();
+        await newTab.setRequestInterception(true);
+        newTab.on('request', (req) => {
+          if (['image', 'stylesheet', 'font'].includes(req.resourceType())) {
+            req.abort();
+          } else {
+            req.continue();
+          }
+        });
+
         await newTab.goto(shortLink, {
           waitUntil: "domcontentloaded",
           timeout: 60000,
         });
-        await new Promise(r => setTimeout(r, 3000));
+
+        await new Promise(r => setTimeout(r, 3000)); // Wait for any potential background scripts to run
         await newTab.close();
+        // --- OPTIMIZATION END ---
 
         await fs.appendFile(path.resolve(OUTPUT_FILE), shortLink + "\n");
         shortenedLinks.add(url);
@@ -140,37 +150,14 @@ async function runBot(server) {
         console.error(`❌ خطا در کوتاه‌سازی ${url}:`, err.message);
       }
     }
-
-    await browser.close();
-    console.log("🎉 تمام شد. در حال بستن سرور...");
-    server.close(() => {
-        console.log('سرور بسته شد.');
-        process.exit(0);
-    });
   } catch (err) {
     console.error("❌ خطا:", err);
-    server.close(() => {
-        console.log('سرور به دلیل خطا بسته شد.');
-        process.exit(1);
-    });
+    process.exit(1);
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+    console.log("🎉 تمام شد.");
+    process.exit(0);
   }
-}
-
-// Server logic
-const PORT = process.env.PORT || 10000;
-
-const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('OK\n');
-});
-
-server.listen(PORT, () => {
-  console.log(`🚀 سرور در پورت ${PORT} اجرا شد.`);
-  console.log('🤖 شروع به کار ربات...');
-  runBot(server);
-});
-
-server.on('error', (err) => {
-  console.error('❌ خطای سرور:', err);
-  process.exit(1);
-});
+})();
