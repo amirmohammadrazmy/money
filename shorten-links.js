@@ -122,25 +122,17 @@ function checkSiteAvailable(url) {
 
         const shortLink = await page.$eval("input#link-result-url", (el) => el.value);
 
-        // --- OPTIMIZATION START ---
-        const newTab = await browser.newPage();
-        await newTab.setRequestInterception(true);
-        newTab.on('request', (req) => {
-          if (['image', 'stylesheet', 'font'].includes(req.resourceType())) {
-            req.abort();
-          } else {
-            req.continue();
-          }
-        });
-
-        await newTab.goto(shortLink, {
+        // --- VALIDATION LOGIC START ---
+        await page.goto(shortLink, {
           waitUntil: "domcontentloaded",
-          timeout: 60000,
+          timeout: 20000, // 20 second timeout as requested
         });
 
-        await new Promise(r => setTimeout(r, 3000)); // Wait for any potential background scripts to run
-        await newTab.close();
-        // --- OPTIMIZATION END ---
+        await new Promise(r => setTimeout(r, 3000)); // Wait for the click to register
+
+        // Go back to the links page for the next iteration
+        await page.goto(LINKS_PAGE, { waitUntil: "networkidle2" });
+        // --- VALIDATION LOGIC END ---
 
         await fs.appendFile(path.resolve(OUTPUT_FILE), shortLink + "\n");
         shortenedLinks.add(url);
