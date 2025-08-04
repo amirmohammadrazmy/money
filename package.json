@@ -1,16 +1,10 @@
 {
   "name": "shortlink-bot",
   "version": "1.0.0",
-  "description": "Automated shortlink clicker using Puppeteer",
+  "description": "Automated shortlink generator using 2ad.ir API",
   "main": "shorten-links.js",
   "scripts": {
-    "start": "node shorten-links.js",
-    "visit": "node visit-links.js"
+    "start": "node shorten-links.js"
   },
-  "dependencies": {
-    "puppeteer": "^22.0.0"
-  },
-  "puppeteer": {
-    "default_browser_revision": "1276746"
-  }
+  "dependencies": {}
 }
