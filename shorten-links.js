@@ -94,6 +94,7 @@ function checkSiteAvailable(url) {
       }
 
       try {
+        await page.waitForSelector('#modal-open-new-link', { visible: true });
         await page.click("#modal-open-new-link");
         await page.waitForSelector("input#url", { visible: true });
         await page.evaluate(() => {
