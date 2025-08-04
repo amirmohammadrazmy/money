@@ -41,7 +41,7 @@ function checkSiteAvailable(url) {
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
-        "--dns-server=8.8.8.8", // Keeping this as it can still be helpful
+        "--dns-server=8.8.8.8",
       ],
     });
 
@@ -87,6 +87,14 @@ function checkSiteAvailable(url) {
       // فایل نیست، مشکلی نیست
     }
 
+    // --- SINGLE MODAL WORKFLOW ---
+    // Open the modal only ONCE before the loop starts.
+    console.log('🚀 باز کردن پاپ‌آپ برای شروع عملیات...');
+    await page.waitForSelector('#modal-open-new-link', { visible: true });
+    await page.click("#modal-open-new-link");
+    await page.waitForSelector("input#url", { visible: true });
+    console.log('✅ پاپ‌آپ باز شد. شروع حلقه...');
+
     for (const url of allLinks) {
       if (shortenedLinks.has(url)) {
         console.log(`✅ قبلاً کوتاه شده: ${url}`);
@@ -94,9 +102,7 @@ function checkSiteAvailable(url) {
       }
 
       try {
-        await page.waitForSelector('#modal-open-new-link', { visible: true });
-        await page.click("#modal-open-new-link");
-        await page.waitForSelector("input#url", { visible: true });
+        // The modal is already open. We just clear the input and type the new URL.
         await page.evaluate(() => {
           const input = document.querySelector("input#url");
           if (input) input.value = "";
@@ -113,7 +119,7 @@ function checkSiteAvailable(url) {
 
         if (!shortenButton) {
           console.error("❌ دکمه «کوتاه کن» با روش جدید پیدا نشد.");
-          continue;
+          continue; // Skip to the next link
         }
 
         await Promise.all([
@@ -123,28 +129,22 @@ function checkSiteAvailable(url) {
 
         const shortLink = await page.$eval("input#link-result-url", (el) => el.value);
 
-        // --- VALIDATION LOGIC START ---
-        await page.goto(shortLink, {
-          waitUntil: "domcontentloaded",
-          timeout: 20000, // 20 second timeout as requested
-        });
-
-        await new Promise(r => setTimeout(r, 3000)); // Wait for the click to register
-
-        // Go back to the links page for the next iteration
-        await page.goto(LINKS_PAGE, { waitUntil: "networkidle2" });
-        // --- VALIDATION LOGIC END ---
-
         await fs.appendFile(path.resolve(OUTPUT_FILE), shortLink + "\n");
         shortenedLinks.add(url);
-
         console.log(`✅ کوتاه شد: ${url} → ${shortLink}`);
+
       } catch (err) {
         console.error(`❌ خطا در کوتاه‌سازی ${url}:`, err.message);
+        console.log('⚠️ تلاش برای بازیابی با ریلود کردن صفحه...');
+        await page.reload({ waitUntil: 'networkidle2' });
+        // After reload, we need to open the modal again for the next items
+        await page.waitForSelector('#modal-open-new-link', { visible: true });
+        await page.click("#modal-open-new-link");
+        await page.waitForSelector("input#url", { visible: true });
       }
     }
   } catch (err) {
-    console.error("❌ خطا:", err);
+    console.error("❌ خطای اصلی:", err);
     process.exit(1);
   } finally {
     if (browser) {
